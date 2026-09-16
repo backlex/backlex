@@ -43,8 +43,16 @@ const TemplateType = new GraphQLObjectType({
     pageOptions: { type: JSONScalar },
     filename: { type: GraphQLString },
     variables: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    appearance: {
+      type: JSONScalar,
+      description: "`{ theme, accent, font }` — rendered into the template as `{{ theme.* }}`. Null when unset.",
+    },
     /** True for an instance-wide default this workspace has not overridden. */
     inherited: { type: new GraphQLNonNull(GraphQLBoolean) },
+    overridesDefault: {
+      type: new GraphQLNonNull(GraphQLBoolean),
+      description: "This workspace's copy shadows an instance-wide default; deleting it restores the default.",
+    },
     createdAt: { type: JSONScalar },
     updatedAt: { type: JSONScalar },
   },
@@ -61,6 +69,10 @@ const TemplateInputType = new GraphQLInputObjectType({
     pageOptions: { type: JSONScalar },
     filename: { type: GraphQLString },
     variables: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+    appearance: {
+      type: JSONScalar,
+      description: "`{ theme: light|dark, accent: #rrggbb, font: sans|lexend|mono|system }`. Null clears it.",
+    },
   },
 });
 
@@ -148,7 +160,7 @@ export const documentMutationFields: Record<string, GraphQLFieldConfig<unknown, 
       surfacing(async () => {
         const tenantId = requireFlowAdmin(gqlCtx);
         const { key } = args as { key: string };
-        await deleteTemplate(gqlCtx.ctx, tenantId, key);
+        const restored = await deleteTemplate(gqlCtx.ctx, tenantId, key);
         await recordActivity(gqlCtx.ctx, {
           userId: gqlCtx.auth.userId ?? null,
           tenantId,
@@ -156,7 +168,8 @@ export const documentMutationFields: Record<string, GraphQLFieldConfig<unknown, 
           collection: "system_document_templates",
           itemId: key,
         });
-        return { ok: true };
+        // What the key resolves to now — the default it overrode, or null.
+        return { ok: true, data: restored };
       }),
   },
   renderDocument: {
@@ -166,6 +179,12 @@ export const documentMutationFields: Record<string, GraphQLFieldConfig<unknown, 
     args: {
       templateKey: { type: GraphQLString },
       html: { type: GraphQLString },
+      headerHtml: { type: GraphQLString, description: "Running header for `html`. Ignored with `templateKey`." },
+      footerHtml: { type: GraphQLString, description: "Running footer for `html`. Ignored with `templateKey`." },
+      appearance: {
+        type: JSONScalar,
+        description: "Rendered as `theme.*`; overrides the template's own, so an unsaved draft can be test-rendered.",
+      },
       vars: { type: JSONScalar },
       pageOptions: { type: JSONScalar },
       filename: { type: GraphQLString },
@@ -176,6 +195,9 @@ export const documentMutationFields: Record<string, GraphQLFieldConfig<unknown, 
         const a = args as {
           templateKey?: string;
           html?: string;
+          headerHtml?: string;
+          footerHtml?: string;
+          appearance?: Record<string, unknown>;
           vars?: Record<string, unknown>;
           pageOptions?: Record<string, unknown>;
           filename?: string;

@@ -16,6 +16,12 @@ import { and, asc, eq, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError, renderTemplate, type PdfPageOptions } from "@backlex/core";
+import {
+  appearanceProblem,
+  normalizeAppearance,
+  withThemeVars,
+  type Appearance,
+} from "@backlex/core/appearance";
 import type { Ctx } from "../context";
 
 type AnyDb = any;
@@ -37,12 +43,15 @@ export interface DocumentTemplateRow {
   pageOptions: Record<string, unknown> | null;
   filename: string | null;
   variables: string[] | null;
+  appearance?: Record<string, unknown> | null;
   updatedBy: string | null;
   createdAt: Date | number | null;
   updatedAt: Date | number | null;
 }
 
-export const toPublicTemplate = (row: DocumentTemplateRow) => ({
+/** `sharedExists` says whether an instance-wide row holds the same key, which
+ *  is what turns "delete" into "reset to default" for a workspace's copy. */
+export const toPublicTemplate = (row: DocumentTemplateRow, sharedExists = false) => ({
   id: row.id,
   key: row.key,
   name: row.name,
@@ -53,10 +62,14 @@ export const toPublicTemplate = (row: DocumentTemplateRow) => ({
   pageOptions: (row.pageOptions ?? {}) as PdfPageOptions,
   filename: row.filename,
   variables: row.variables ?? [],
+  appearance: normalizeAppearance(row.appearance),
   /** True for an instance-wide row a workspace has not overridden. Editing one
    *  from a workspace creates the override rather than changing the shared
    *  default, so the UI needs to know which it is looking at. */
   inherited: row.tenantId === null,
+  /** A workspace's own row that shadows an instance-wide default: deleting it
+   *  restores the default rather than removing the key. */
+  overridesDefault: row.tenantId !== null && sharedExists,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
@@ -86,11 +99,12 @@ export async function listTemplates(
   // A workspace override hides the instance-wide row with the same key, rather
   // than both appearing and the operator having to know which one renders.
   const byKey = new Map<string, DocumentTemplateRow>();
+  const shared = new Set(rows.filter((r) => r.tenantId === null).map((r) => r.key));
   for (const row of rows) {
     const existing = byKey.get(row.key);
     if (!existing || (existing.tenantId === null && row.tenantId !== null)) byKey.set(row.key, row);
   }
-  return [...byKey.values()].map(toPublicTemplate);
+  return [...byKey.values()].map((row) => toPublicTemplate(row, shared.has(row.key)));
 }
 
 /** Resolve one key: the workspace's own row wins over the instance default. */
@@ -120,7 +134,19 @@ export interface UpsertTemplateInput {
   pageOptions?: PdfPageOptions | null;
   filename?: string | null;
   variables?: string[] | null;
+  appearance?: Appearance | null;
 }
+
+/** Whether an instance-wide row holds `key`. */
+const sharedTemplateExists = async (ctx: Ctx, key: string): Promise<boolean> => {
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as AnyDb)
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.key, key), isNull(t.tenantId)))
+    .limit(1)) as { id: string }[];
+  return rows.length > 0;
+};
 
 /**
  * Create or update a workspace's template.
@@ -137,6 +163,10 @@ export async function upsertTemplate(
 ): Promise<PublicDocumentTemplate> {
   const key = input.key?.trim();
   if (!key) throw new AppError("VALIDATION", "A document template needs a key");
+  // REST validates this with its schema; GraphQL hands over a JSON scalar, so
+  // the rule is enforced here where both arrive.
+  const problem = appearanceProblem(input.appearance);
+  if (problem) throw new AppError("VALIDATION", problem);
 
   const t = tableFor(ctx.dialect);
   const [own] = (await (ctx.db as AnyDb)
@@ -157,6 +187,7 @@ export async function upsertTemplate(
     if (input.pageOptions !== undefined) set.pageOptions = input.pageOptions;
     if (input.filename !== undefined) set.filename = input.filename;
     if (input.variables !== undefined) set.variables = input.variables;
+    if (input.appearance !== undefined) set.appearance = normalizeAppearance(input.appearance);
     await (ctx.db as AnyDb).update(t).set(set).where(eq(t.id, own.id));
   } else {
     if (!input.bodyHtml?.trim()) {
@@ -174,6 +205,7 @@ export async function upsertTemplate(
       pageOptions: input.pageOptions ?? null,
       filename: input.filename ?? null,
       variables: input.variables ?? null,
+      appearance: normalizeAppearance(input.appearance),
       updatedBy: updatedBy ?? null,
       createdAt: now,
       updatedAt: now,
@@ -181,19 +213,30 @@ export async function upsertTemplate(
   }
   const row = await resolveTemplate(ctx, key, tenantId);
   if (!row) throw new Error("document template missing after write");
-  return toPublicTemplate(row);
+  return toPublicTemplate(row, tenantId !== null && (await sharedTemplateExists(ctx, key)));
 }
 
 /** Delete a workspace's own row. An inherited default is not deletable from
  *  inside a workspace — there is nothing there to delete, and silently doing
- *  nothing would read as a broken button. */
-export async function deleteTemplate(ctx: Ctx, tenantId: string | null, key: string): Promise<void> {
+ *  nothing would read as a broken button.
+ *
+ *  Returns what the key resolves to afterwards — the shared default the row
+ *  overrode, or null — the same answer the email-template DELETE gives, so a
+ *  "reset to default" can show the restored template without a second read. */
+export async function deleteTemplate(
+  ctx: Ctx,
+  tenantId: string | null,
+  key: string,
+): Promise<PublicDocumentTemplate | null> {
   const t = tableFor(ctx.dialect);
   const where =
     tenantId == null ? and(eq(t.key, key), isNull(t.tenantId)) : and(eq(t.key, key), eq(t.tenantId, tenantId));
   const [own] = (await (ctx.db as AnyDb).select().from(t).where(where)) as DocumentTemplateRow[];
   if (!own) throw new AppError("NOT_FOUND", `No document template "${key}" in this workspace`);
   await (ctx.db as AnyDb).delete(t).where(eq(t.id, own.id));
+  if (tenantId === null) return null;
+  const fallback = await resolveTemplate(ctx, key, null);
+  return fallback ? toPublicTemplate(fallback) : null;
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
@@ -203,6 +246,13 @@ export interface RenderDocumentInput {
   templateKey?: string;
   /** A complete HTML document, for a caller that has one already. */
   html?: string;
+  /** Running header / footer for `html` — what a template carries, for a draft
+   *  being test-rendered before it is saved. Ignored with `templateKey`. */
+  headerHtml?: string | null;
+  footerHtml?: string | null;
+  /** Rendered as `theme.*`. Overrides the template's own appearance, so a draft
+   *  whose theme changed can be test-rendered before it is saved. */
+  appearance?: Appearance | null;
   /** Values available to `{{ … }}` in the template. */
   vars?: Record<string, unknown>;
   /** Overrides the template's own page setup, field by field. */
@@ -267,10 +317,12 @@ export async function renderDocument(
     );
   }
 
-  const vars = input.vars ?? {};
   let bodyHtml = input.html;
-  let headerHtml: string | undefined;
-  let footerHtml: string | undefined;
+  let headerHtml: string | undefined = input.headerHtml ?? undefined;
+  let footerHtml: string | undefined = input.footerHtml ?? undefined;
+  const problem = appearanceProblem(input.appearance);
+  if (problem) throw new AppError("VALIDATION", problem);
+  let appearance = normalizeAppearance(input.appearance);
   let pageOptions: PdfPageOptions = {};
   let filename = input.filename;
 
@@ -282,7 +334,12 @@ export async function renderDocument(
     footerHtml = tpl.footerHtml ?? undefined;
     pageOptions = (tpl.pageOptions ?? {}) as PdfPageOptions;
     filename = filename ?? tpl.filename ?? undefined;
+    if (input.appearance === undefined) appearance = normalizeAppearance(tpl.appearance);
   }
+  // `theme.*` is filled for every interpolated render, template or not — a
+  // template written against `{{ theme.accent }}` renders its defaults rather
+  // than an empty `color:`.
+  const vars = withThemeVars(input.vars ?? {}, appearance);
   if (!bodyHtml?.trim()) {
     throw new AppError("VALIDATION", "renderDocument needs a templateKey or html");
   }

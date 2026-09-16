@@ -19,6 +19,7 @@ import {
   type BuiltInEmailKey,
   type EmailRenderContexts,
 } from "@backlex/core/email-templates";
+import type { Appearance } from "@backlex/core/appearance";
 import type { ApiEmailTemplate } from "../../api";
 
 /** One row of the list: a stored template, a built-in email with no stored
@@ -80,9 +81,19 @@ export interface Draft {
   fromAddress: string;
   bodyHtml: string;
   bodyText: string;
+  /** Null renders against the light defaults. */
+  appearance: Appearance | null;
 }
 
-export const EMPTY_DRAFT: Draft = { name: "", key: "", subject: "", fromAddress: "", bodyHtml: "", bodyText: "" };
+export const EMPTY_DRAFT: Draft = {
+  name: "",
+  key: "",
+  subject: "",
+  fromAddress: "",
+  bodyHtml: "",
+  bodyText: "",
+  appearance: null,
+};
 
 /** What the editor opens with. A built-in email nobody customized opens on its
  *  starter, named after the email it replaces. */
@@ -95,6 +106,7 @@ export const draftFor = (e: TemplateEntry, builtInName: string): Draft => {
       fromAddress: e.row.fromAddress ?? "",
       bodyHtml: e.row.bodyHtml,
       bodyText: e.row.bodyText ?? "",
+      appearance: e.row.appearance ?? null,
     };
   }
   if (e.builtIn) {
@@ -110,7 +122,19 @@ export const sameDraft = (a: Draft, b: Draft): boolean =>
   a.subject === b.subject &&
   a.fromAddress === b.fromAddress &&
   a.bodyHtml === b.bodyHtml &&
-  a.bodyText === b.bodyText;
+  a.bodyText === b.bodyText &&
+  sameAppearance(a.appearance, b.appearance);
+
+/** Two appearances render the same. Key order and an empty object never make a
+ *  draft read as edited. */
+export const sameAppearance = (a: Appearance | null, b: Appearance | null): boolean =>
+  (a?.theme ?? null) === (b?.theme ?? null) &&
+  (a?.accent?.toLowerCase() ?? null) === (b?.accent?.toLowerCase() ?? null) &&
+  (a?.font ?? null) === (b?.font ?? null);
+
+/** `theme.*` is filled from the template's appearance for every send, so it is
+ *  never the sender's to pass nor the sample data's to hold. */
+export const isThemePath = (path: string): boolean => path === "theme" || path.startsWith("theme.");
 
 /** Every placeholder the draft uses — what a save records as `variables`. */
 export const draftRefs = (d: Draft): string[] => templateVariableRefs(d.subject, d.bodyHtml, d.bodyText);
@@ -183,7 +207,7 @@ export const variableWarnings = (
   d: Draft,
   sample: Record<string, unknown> | null,
 ): VariableWarning[] => {
-  const refs = draftRefs(d);
+  const refs = draftRefs(d).filter((p) => !isThemePath(p));
   if (e.builtIn && !e.isNew) {
     const key = e.builtIn;
     return refs.filter((p) => !senderPasses(key, p)).map((path) => ({ path, reason: "not-sent" }));
@@ -245,7 +269,7 @@ export const seedSample = (e: TemplateEntry, d: Draft): Record<string, unknown> 
     return JSON.parse(JSON.stringify(BUILT_IN_EMAIL_TEMPLATES[e.builtIn].sample)) as Record<string, unknown>;
   }
   const out: Record<string, unknown> = {};
-  const paths = [...new Set([...(e.row?.variables ?? []), ...draftRefs(d)])];
+  const paths = [...new Set([...(e.row?.variables ?? []), ...draftRefs(d)])].filter((p) => !isThemePath(p));
   for (const path of paths) {
     const known = contextSampleValue(path);
     setPath(out, path, known.found ? known.value : "");

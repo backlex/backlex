@@ -9,6 +9,21 @@ export interface PdfPageOptions {
   printBackground?: boolean;
 }
 
+/**
+ * Theme, accent and font — the settings a form stores, in the same shape. A
+ * template reads them as `{{ theme.mode }}`, `{{ theme.accent }}`,
+ * `{{ theme.accentInk }}`, `{{ theme.bg }}`, `{{ theme.card }}`,
+ * `{{ theme.text }}`, `{{ theme.muted }}`, `{{ theme.faint }}`,
+ * `{{ theme.border }}`, `{{ theme.font }}` and `{{ theme.fontsHref }}`; an
+ * unset template renders against the light defaults.
+ */
+export interface TemplateAppearance {
+  theme?: "light" | "dark";
+  /** `#rrggbb`. */
+  accent?: string;
+  font?: "sans" | "lexend" | "mono" | "system";
+}
+
 /** A stored HTML template a document is rendered from. */
 export interface DocumentTemplate {
   id: string;
@@ -22,9 +37,13 @@ export interface DocumentTemplate {
   pageOptions: PdfPageOptions;
   filename: string | null;
   variables: string[];
+  appearance: TemplateAppearance | null;
   /** True for an instance-wide default this workspace has not overridden.
    *  Saving one creates the override rather than changing the shared row. */
   inherited: boolean;
+  /** This workspace's copy shadows an instance-wide default; deleting it
+   *  restores the default. */
+  overridesDefault: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -38,12 +57,19 @@ export interface DocumentTemplateInput {
   pageOptions?: PdfPageOptions | null;
   filename?: string | null;
   variables?: string[] | null;
+  /** Null clears it. */
+  appearance?: TemplateAppearance | null;
 }
 
 export interface RenderDocumentInput {
   /** Exactly one of these two. */
   templateKey?: string;
   html?: string;
+  /** Running header / footer for `html`. Ignored with `templateKey`. */
+  headerHtml?: string | null;
+  footerHtml?: string | null;
+  /** Overrides the template's own appearance for this render. */
+  appearance?: TemplateAppearance | null;
   vars?: Record<string, unknown>;
   pageOptions?: PdfPageOptions;
   filename?: string;
@@ -61,8 +87,9 @@ export interface DocumentsClient {
   list(): Promise<{ data: DocumentTemplate[] }>;
   /** Create or update a template. Always writes a workspace-scoped row. */
   save(key: string, input: DocumentTemplateInput): Promise<{ data: DocumentTemplate }>;
-  /** Delete this workspace's own row. An inherited default 404s. */
-  delete(key: string): Promise<{ ok: boolean }>;
+  /** Delete this workspace's own row. An inherited default 404s. `data` is what
+   *  the key resolves to afterwards: the default it overrode, or null. */
+  delete(key: string): Promise<{ ok: boolean; data: DocumentTemplate | null }>;
   /** Render to PDF bytes. */
   render(input: RenderDocumentInput): Promise<Uint8Array>;
 }
@@ -77,7 +104,7 @@ export const makeDocuments = (core: ClientCore): DocumentsClient => {
         input,
       ),
     delete: (key: string) =>
-      core.request<{ ok: boolean }>(
+      core.request<{ ok: boolean; data: DocumentTemplate | null }>(
         "DELETE",
         `/api/admin/documents/templates/${encodeURIComponent(key)}`,
       ),

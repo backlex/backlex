@@ -2,6 +2,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError, renderTemplate, htmlToText, type EmailAttachment } from "@backlex/core";
+import { normalizeAppearance, withThemeVars } from "@backlex/core/appearance";
 import type { Ctx } from "../../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -15,6 +16,7 @@ interface TemplateRow {
   fromAddress: string | null;
   bodyHtml: string;
   bodyText: string | null;
+  appearance?: Record<string, unknown> | null;
 }
 
 /**
@@ -132,10 +134,13 @@ export const sendTemplatedEmail = async (
   }
 
   if (tpl) {
-    const subject = renderTemplate(tpl.subject, vars);
-    const html = renderTemplate(tpl.bodyHtml, vars);
+    // A stored template renders with its own appearance as `theme.*`; a
+    // fallback below has none and gets only what the caller passed.
+    const themed = withThemeVars(vars, normalizeAppearance(tpl.appearance));
+    const subject = renderTemplate(tpl.subject, themed);
+    const html = renderTemplate(tpl.bodyHtml, themed);
     const text = tpl.bodyText
-      ? renderTemplate(tpl.bodyText, vars)
+      ? renderTemplate(tpl.bodyText, themed)
       : htmlToText(html);
     await transport.send({
       to: opts.to,

@@ -34,6 +34,7 @@ import { tryParseEmail } from "@backlex/db/email";
 import { AppError, renderTemplate, type PdfPageOptions } from "@backlex/core";
 import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import type { Ctx } from "../context";
+import { normalizeAppearance, withThemeVars } from "@backlex/core/appearance";
 import { MAX_PDF_BYTES, resolveTemplate, safeFilename } from "./documents";
 import { hashToken } from "./shared-links";
 import { updateItem } from "./items/helpers";
@@ -517,7 +518,7 @@ export const createSignatureRequest = async (
     seen.add(lower);
   }
 
-  const vars = input.vars ?? {};
+  let vars = input.vars ?? {};
   let bodyHtml = input.html;
   let headerHtml: string | undefined;
   let footerHtml: string | undefined;
@@ -534,6 +535,9 @@ export const createSignatureRequest = async (
     pageOptions = (tpl.pageOptions ?? {}) as PdfPageOptions;
     filename = filename ?? tpl.filename ?? undefined;
     title = title || tpl.name;
+    // The template's appearance as `theme.*`, as a plain render would give it —
+    // the frozen snapshot has to be the document the template produces.
+    vars = withThemeVars(vars, normalizeAppearance(tpl.appearance));
   }
   if (!bodyHtml?.trim()) throw new AppError("VALIDATION", "A signature request needs a document body");
 

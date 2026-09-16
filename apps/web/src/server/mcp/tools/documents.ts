@@ -54,6 +54,19 @@ export const saveDocumentTemplateTool: McpTool = {
       },
       filename: { type: "string" },
       variables: { type: "array", items: { type: "string" } },
+      appearance: {
+        type: "object",
+        description:
+          "{ theme: light|dark, accent: #rrggbb, font: sans|lexend|mono|system }. Read in the template as " +
+          "{{ theme.accent }}, {{ theme.accentInk }}, {{ theme.bg }}, {{ theme.card }}, {{ theme.text }}, " +
+          "{{ theme.muted }}, {{ theme.border }}, {{ theme.font }}. Null clears it.",
+        additionalProperties: false,
+        properties: {
+          theme: { type: "string", enum: ["light", "dark"] },
+          accent: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
+          font: { type: "string", enum: ["sans", "lexend", "mono", "system"] },
+        },
+      },
     },
     required: ["key"],
     additionalProperties: false,
@@ -76,7 +89,8 @@ export const deleteDocumentTemplateTool: McpTool = {
   name: "documents.templates_delete",
   description:
     "Delete this workspace's own document template. An inherited instance-wide default is not " +
-    "deletable from inside a workspace and returns a 404.",
+    "deletable from inside a workspace and returns a 404. Answers with what the key resolves to " +
+    "afterwards: the shared default the template overrode, or null.",
   inputSchema: {
     type: "object",
     properties: { key: { type: "string" } },
@@ -108,6 +122,21 @@ export const renderDocumentTool: McpTool = {
     properties: {
       templateKey: { type: "string" },
       html: { type: "string" },
+      headerHtml: { type: "string", description: "Running header for `html`. Ignored with `templateKey`." },
+      footerHtml: { type: "string", description: "Running footer for `html`. Ignored with `templateKey`." },
+      appearance: {
+        type: "object",
+        description:
+          "{ theme: light|dark, accent: #rrggbb, font: sans|lexend|mono|system }. Read in the template as " +
+          "{{ theme.accent }}, {{ theme.accentInk }}, {{ theme.bg }}, {{ theme.card }}, {{ theme.text }}, " +
+          "{{ theme.muted }}, {{ theme.border }}, {{ theme.font }}. Overrides the template's own.",
+        additionalProperties: false,
+        properties: {
+          theme: { type: "string", enum: ["light", "dark"] },
+          accent: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
+          font: { type: "string", enum: ["sans", "lexend", "mono", "system"] },
+        },
+      },
       vars: {
         type: "object",
         description: "Usually `{ data: { …the row… } }`, matching `{{ data.x }}` in the template.",

@@ -118,8 +118,8 @@ msgid "…or read the country from <0>(optional)</0>"
 msgstr "…ya da ülkeyi şuradan oku <0>(isteğe bağlı)</0>"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "· approximate — use Render PDF for the real thing"
-msgstr "· yaklaşık — gerçeği için PDF Oluştur'u kullanın"
+#~ msgid "· approximate — use Render PDF for the real thing"
+#~ msgstr "· yaklaşık — gerçeği için PDF Oluştur'u kullanın"
 
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "· keep last"
@@ -278,8 +278,8 @@ msgid "(pick a provider first)"
 msgstr "(önce bir sağlayıcı seçin)"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "(unnamed)"
-msgstr "(isimsiz)"
+#~ msgid "(unnamed)"
+#~ msgstr "(isimsiz)"
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "(use the configured default)"
@@ -1031,6 +1031,7 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} silindi."
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "{label} (copy)"
 msgstr "{label} (kopya)"
@@ -1174,6 +1175,10 @@ msgstr "{slugClean} zaten mevcut"
 msgid "{systemCount} system · {customCount} custom"
 msgstr "{systemCount} sistem · {customCount} özel"
 
+#: src/client/admin/collections/relational-pickers.tsx
+msgid "{target} is empty."
+msgstr "{target} boş."
+
 #. placeholder {0}: schemaState.fields.length
 #: src/client/admin/app.tsx
 msgid "{total} rows · {0} fields"
@@ -1255,6 +1260,10 @@ msgid "<0>{placeholder}</0> has no sample value, so the preview and the test ema
 msgstr "<0>{placeholder}</0> için örnek değer yok; önizleme ve test e-postası bunu boş gösterir."
 
 #: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "<0>{placeholder}</0> has no sample value, so the preview and the test render show it empty."
+msgstr "<0>{placeholder}</0> için örnek değer yok; önizlemede ve test çıktısında boş görünür."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
 msgid "<0>{placeholder}</0> is not sent with this email, so it will always be empty."
 msgstr "<0>{placeholder}</0> bu e-postayla gönderilmiyor; bu yüzden her zaman boş kalır."
 
@@ -1324,6 +1333,10 @@ msgstr "1 birim, karara bağlandı"
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
 msgstr "1 yıl"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "1–100 characters: letters, digits, _, - or ., starting with a letter or digit."
+msgstr "1–100 karakter: harf, rakam, _, - veya .; harf ya da rakamla başlamalı."
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "1:1 square"
@@ -1470,6 +1483,10 @@ msgstr "Onay banner'ı kayıtlı bir web sitesi için servis edilir. Önce bir t
 msgid "a cookie, not an identity — another browser answers again"
 msgstr "kimlik değil çerez — başka bir tarayıcı yeniden yanıtlar"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "A CSS font-family value."
+msgstr "Bir CSS font-family değeri."
+
 #: src/client/admin/pages/settings/email-template-variables.tsx
 msgid "A custom template receives whatever its sender passes. Click a variable to insert it where your cursor is."
 msgstr "Özel bir şablon, gönderenin ilettiği her şeyi alır. İmlecin olduğu yere eklemek için bir değişkene tıklayın."
@@ -1481,6 +1498,10 @@ msgstr "Bu adda bir pano zaten var."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A date range has to end on or after the day it starts."
 msgstr "Bir tarih aralığı, başladığı günde veya sonrasında bitmelidir."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "A document receives whatever renders it — a flow step passes the row as data. Click a variable to insert it where your cursor is."
+msgstr "Doküman, onu oluşturan neyi gönderirse onu alır — bir flow adımı satırı data olarak verir. Bir değişkene tıklayınca imlecin olduğu yere eklenir."
 
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
@@ -1689,9 +1710,14 @@ msgstr "Bir etiket ancak bir şey onu tetiklediğinde çalışır — genellikle
 #~ msgstr "Bir takım arkadaşı bir tur çalıştırıyor…"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "A template needs a key."
-msgstr "Bir şablonun anahtarı olmalı."
+msgid "A template needs a body."
+msgstr "Şablonun bir gövdesi olmalı."
 
+#: src/client/admin/pages/settings/documents.tsx
+#~ msgid "A template needs a key."
+#~ msgstr "Bir şablonun anahtarı olmalı."
+
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "A template with key \"{key}\" already exists."
 msgstr "\"{key}\" anahtarlı bir şablon zaten mevcut."
@@ -1766,6 +1792,7 @@ msgid "About"
 msgstr "Hakkında"
 
 #: src/client/admin/pages/data/forms/panels.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "accent"
 msgstr "vurgu rengi"
 
@@ -2041,6 +2068,10 @@ msgstr "Bir akışa \"Onay bekle\" adımı ekleyin; oluşturduğu istekler burad
 msgid "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
 msgstr "<0>status</0> açılır listesini <1>taslak / inceleme / yayınlandı / arşivlendi</1> + seçenek başına renk ile ekle. Liste görünümü durum sekmelerini ve rozetleri otomatik gösterir."
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Add a body before rendering."
+msgstr "Oluşturmadan önce bir gövde ekleyin."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Add a booking"
 msgstr "Rezervasyon ekle"
@@ -2092,8 +2123,8 @@ msgid "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collec
 msgstr "Hazır bir dikey ekleyin (blog, e-ticaret, CRM, …) — örnek verili, gruplanmış koleksiyonlar. Var olan koleksiyonlar atlanır."
 
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
-msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ilişki alanı ekle."
+msgid "Add a relation field on <0>{from}</0> pointing to <1>{to}</1>."
+msgstr "<0>{from}</0> koleksiyonuna <1>{to}</1> öğesini gösteren bir ilişki alanı ekle."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add a remote MCP connector"
@@ -2183,8 +2214,8 @@ msgstr "Alan ekle"
 
 #. placeholder {0}: schema?.slug || "posts"
 #: src/client/admin/fields/add-field.tsx
-msgid "Add field to <0>c_{0}</0>"
-msgstr "<0>c_{0}</0> koleksiyonuna alan ekle"
+msgid "Add field to <0>{0}</0>"
+msgstr "<0>{0}</0> koleksiyonuna alan ekle"
 
 #: src/client/admin/collections/items.tsx
 msgid "Add filter"
@@ -2762,6 +2793,14 @@ msgstr "Ayrıca {0} API anahtarı iptal edildi."
 msgid "Also show rows that are out of play"
 msgstr "Kullanımdan kaldırılan satırları da göster"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+#~ msgid "Always available, whoever sends or renders the template. Click one to insert it where your cursor is."
+#~ msgstr "Şablonu kim gönderirse ya da oluşturursa oluştursun her zaman kullanılabilir. Birine tıklayınca imlecin olduğu yere eklenir."
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Always available. Click one to insert it where your cursor is."
+msgstr "Her zaman kullanılabilir. Birine tıklayınca imlecin olduğu yere eklenir."
+
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Always fires. The site cannot run without it, so nothing is asked."
 msgstr "Her zaman çalışır. Site onsuz çalışamadığı için ziyaretçiye sorulmaz."
@@ -3064,6 +3103,8 @@ msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on
 msgstr "Uygulama katmanı tetikleyicisi — backlex'te DB yabancı anahtarı yok, bu yüzden silmede uygulanır."
 
 #: src/client/admin/pages/observability/consent.tsx
+#: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
 msgid "Appearance"
 msgstr "Görünüm"
@@ -3203,6 +3244,10 @@ msgstr "Onaylayanlar"
 msgid "Approving…"
 msgstr "Onaylanıyor…"
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "approximate — use Render PDF for the real thing"
+msgstr "yaklaşık — gerçek çıktı için “PDF oluştur”u kullanın"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Apps sending with it stop being accepted immediately, and events they emit are lost rather than queued."
 msgstr "Bu anahtarla gönderen uygulamalar anında kabul edilmeyi bırakır; yaydıkları olaylar kuyruğa alınmaz, kaybolur."
@@ -3222,12 +3267,12 @@ msgid "Archive collection"
 msgstr "Koleksiyonu arşivle"
 
 #: src/client/admin/app.tsx
-msgid "Archive collection <0>c_{activeCollection}</0>?"
-msgstr "<0>c_{activeCollection}</0> koleksiyonu arşivlensin mi?"
+msgid "Archive collection <0>{activeCollection}</0>?"
+msgstr "<0>{activeCollection}</0> koleksiyonu arşivlensin mi?"
 
 #: src/client/admin/app.tsx
-msgid "Archive collection <0>c_{slug}</0>?"
-msgstr "<0>c_{slug}</0> koleksiyonu arşivlensin mi?"
+msgid "Archive collection <0>{slug}</0>?"
+msgstr "<0>{slug}</0> koleksiyonu arşivlensin mi?"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Archive this collection"
@@ -3621,6 +3666,10 @@ msgstr "Şimdi yedekle"
 msgid "Background"
 msgstr "Arka plan"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Background of a panel on the page."
+msgstr "Sayfadaki bir panelin arka planı."
+
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
 msgstr "backlex bu tabloların sahibi değil, bu yüzden uygulama reddedildi — orada satır güvenliğini açmak backlex'in kendi sorgularını filtrelerdi:"
@@ -3848,6 +3897,10 @@ msgstr "İçerik (HTML)"
 msgid "Body (text)"
 msgstr "İçerik (metin)"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Body text."
+msgstr "Gövde metni."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Book"
 msgstr "Rezerve et"
@@ -3926,6 +3979,10 @@ msgstr "Rezervasyonlar burası dışında hiçbir yere kaydedilmiyor. Bu müşte
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Border"
 msgstr "Kenarlık"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Borders and dividers."
+msgstr "Kenarlıklar ve ayraçlar."
 
 #: src/client/admin/collections/items.tsx
 msgid "Both"
@@ -4071,10 +4128,6 @@ msgstr "atla — salt okunur"
 #: src/client/admin/pages/access/roles-panel.tsx
 msgid "bypasses every permission check"
 msgstr "her izin kontrolünü atlar"
-
-#: src/client/admin/collections/relational-pickers.tsx
-msgid "c_{target} is empty."
-msgstr "c_{target} boş."
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "cached"
@@ -4805,25 +4858,25 @@ msgstr "Koleksiyon"
 
 #. placeholder {0}: c.slug
 #: src/client/admin/app.tsx
-msgid "Collection c_{0} created."
-msgstr "c_{0} koleksiyonu oluşturuldu."
+msgid "Collection {0} created."
+msgstr "{0} koleksiyonu oluşturuldu."
 
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} archived. Restore it from the Archived view."
-msgstr "c_{slug} koleksiyonu arşivlendi. Arşivlendi görünümünden geri yükleyin."
+msgid "Collection {slug} archived. Restore it from the Archived view."
+msgstr "{slug} koleksiyonu arşivlendi. Arşivlendi görünümünden geri yükleyin."
 
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} dropped."
-msgstr "c_{slug} koleksiyonu silindi."
+msgid "Collection {slug} dropped."
+msgstr "{slug} koleksiyonu silindi."
 
 #. placeholder {0}: resp.rows
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} dropped. {0} row(s) saved to a backup."
-msgstr "c_{slug} koleksiyonu silindi. {0} satır bir yedeğe kaydedildi."
+msgid "Collection {slug} dropped. {0} row(s) saved to a backup."
+msgstr "{slug} koleksiyonu silindi. {0} satır bir yedeğe kaydedildi."
 
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} restored."
-msgstr "c_{slug} koleksiyonu geri yüklendi."
+msgid "Collection {slug} restored."
+msgstr "{slug} koleksiyonu geri yüklendi."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Collection default"
@@ -4912,22 +4965,22 @@ msgstr "Sütun"
 #. placeholder {0}: (field as { name?: string }).name
 #. placeholder {1}: addSchema.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Column \"{0}\" added to c_{1}."
-msgstr "\"{0}\" sütunu c_{1} koleksiyonuna eklendi."
+msgid "Column \"{0}\" added to {1}."
+msgstr "\"{0}\" sütunu {1} koleksiyonuna eklendi."
 
 #. placeholder {0}: (field as any).name
 #: src/client/admin/app.tsx
-msgid "Column \"{0}\" added to c_{slug}."
-msgstr "\"{0}\" sütunu c_{slug} koleksiyonuna eklendi."
+msgid "Column \"{0}\" added to {slug}."
+msgstr "\"{0}\" sütunu {slug} koleksiyonuna eklendi."
 
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Column \"{name}\" dropped from c_{slug}."
-msgstr "\"{name}\" sütunu c_{slug} tablosundan kaldırıldı."
+msgid "Column \"{name}\" dropped from {slug}."
+msgstr "\"{name}\" sütunu {slug} tablosundan kaldırıldı."
 
 #. placeholder {0}: res.nonNull
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup."
-msgstr "\"{name}\" sütunu c_{slug} tablosundan silindi. {0} değer bir yedeğe kaydedildi."
+msgid "Column \"{name}\" dropped from {slug}. {0} value(s) saved to a backup."
+msgstr "\"{name}\" sütunu {slug} tablosundan silindi. {0} değer bir yedeğe kaydedildi."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."
@@ -5336,6 +5389,8 @@ msgid "contains"
 msgstr "içerir"
 
 #: src/client/admin/collections/collections-index.tsx
+#: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Content"
 msgstr "İçerik"
 
@@ -6307,9 +6362,14 @@ msgstr "backlex'in gönderdiği e-postaları özelleştirin ya da akışlar ve z
 msgid "Customize…"
 msgstr "Özelleştir…"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "customized"
 msgstr "özelleştirildi"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Customized: this workspace renders your version. Reset to go back to the shared default."
+msgstr "Özelleştirildi: bu çalışma alanı sizin sürümünüzü kullanır. Paylaşılan varsayılana dönmek için sıfırlayın."
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Customized: this workspace sends your version. Reset to go back to the built-in email."
@@ -6342,6 +6402,7 @@ msgstr "Tehlike bölgesi"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "Dark"
 msgstr "Koyu"
 
@@ -6579,6 +6640,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -6624,12 +6686,12 @@ msgid "Delete collection"
 msgstr "Koleksiyonu sil"
 
 #: src/client/admin/app.tsx
-msgid "Delete collection <0>c_{activeCollection}</0>?"
-msgstr "<0>c_{activeCollection}</0> koleksiyonu silinsin mi?"
+msgid "Delete collection <0>{activeCollection}</0>?"
+msgstr "<0>{activeCollection}</0> koleksiyonu silinsin mi?"
 
 #: src/client/admin/app.tsx
-msgid "Delete collection <0>c_{slug}</0>?"
-msgstr "<0>c_{slug}</0> koleksiyonu silinsin mi?"
+msgid "Delete collection <0>{slug}</0>?"
+msgstr "<0>{slug}</0> koleksiyonu silinsin mi?"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Delete dashboard"
@@ -6761,6 +6823,7 @@ msgstr "Bu satırı da sil (art arda)"
 msgid "Delete this submission?"
 msgstr "Bu gönderim silinsin mi?"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Delete this template?"
 msgstr "Bu şablon silinsin mi?"
@@ -7001,6 +7064,7 @@ msgstr "yalnızca sizin değil, her üyenin çalışma alanı listesinden kaybol
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -7013,6 +7077,7 @@ msgid "Discard changes"
 msgstr "Değişiklikleri at"
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Discard unsaved changes?"
 msgstr "Kaydedilmemiş değişiklikler atılsın mı?"
@@ -7266,8 +7331,12 @@ msgid "Draw your signature first"
 msgstr "Önce imzanızı çizin"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "Drawn on every page by the renderer, not in the preview."
-msgstr "Her sayfaya renderer tarafından çizilir, önizlemede görünmez."
+#~ msgid "Drawn on every page by the renderer, not in the preview."
+#~ msgstr "Her sayfaya renderer tarafından çizilir, önizlemede görünmez."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Drawn on every page by the renderer, not in the preview. Insert:"
+msgstr "Önizlemede değil, oluşturucu tarafından her sayfaya çizilir. Ekle:"
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Drives the period comparison"
@@ -7355,10 +7424,12 @@ msgstr "<0>{source}</0> koleksiyonunu çoğalt"
 msgid "Duplicate collection (schema only)"
 msgstr "Koleksiyonu çoğalt (yalnızca şema)"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Duplicate template"
 msgstr "Şablonu çoğalt"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Duplicated as \"{name}\"."
 msgstr "\"{name}\" olarak çoğaltıldı."
@@ -8838,8 +8909,12 @@ msgid "Fills the preview and the test email. Kept while this page is open; not s
 msgstr "Önizlemeyi ve test e-postasını doldurur. Bu sayfa açık kaldığı sürece tutulur; şablonla birlikte kaydedilmez."
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "Fills the preview and the test render. The row arrives as `data`."
-msgstr "Önizlemeyi ve deneme çıktısını doldurur. Satır `data` olarak gelir."
+#~ msgid "Fills the preview and the test render. The row arrives as `data`."
+#~ msgstr "Önizlemeyi ve deneme çıktısını doldurur. Satır `data` olarak gelir."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Fills the preview and the test render. The row arrives as data. Kept while this page is open; not saved with the template."
+msgstr "Önizlemeyi ve test çıktısını doldurur. Satır data olarak gelir. Sayfa açıkken korunur; şablonla birlikte kaydedilmez."
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
@@ -9042,6 +9117,10 @@ msgstr "Akış devam ettirildi."
 msgid "Flow steps and reports that name its key fall back to their own subject and body. This can't be undone."
 msgstr "Bu anahtarı kullanan akış adımları ve raporlar kendi konu ve içeriklerine döner. Bu işlem geri alınamaz."
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Flow steps and signature requests that name its key stop rendering. This can't be undone."
+msgstr "Bu anahtarı kullanan flow adımları ve imza talepleri artık oluşturulamaz. Bu işlem geri alınamaz."
+
 #: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/ui.tsx
@@ -9099,6 +9178,7 @@ msgid "Folders"
 msgstr "Klasörler"
 
 #: src/client/admin/pages/data/forms/panels.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "font"
 msgstr "yazı tipi"
 
@@ -10165,6 +10245,10 @@ msgstr "Girdi (JSON)"
 #~ msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
 #~ msgstr "Son turda prompt önbelleğinden karşılanan girdi token'ları — tam fiyatın yaklaşık onda biri üzerinden faturalanır."
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Insert {{ {path} }}"
+msgstr "{{ {path} }} ekle"
+
 #: src/client/admin/pages/settings/email-template-variables.tsx
 msgid "Insert {placeholder}"
 msgstr "{placeholder} ekle"
@@ -10175,8 +10259,8 @@ msgstr "Alan ekle"
 
 #. placeholder {0}: ownerScoped ? ( <> . Owner is set to <span className="font-mono">$user.id</span> </> ) : null
 #: src/client/admin/sheet.tsx
-msgid "Insert into <0>c_{slug}</0>{0}."
-msgstr "<0>c_{slug}</0>{0} tablosuna ekle."
+msgid "Insert into <0>{slug}</0>{0}."
+msgstr "<0>{slug}</0>{0} tablosuna ekle."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
@@ -10409,8 +10493,8 @@ msgid "invocations · p95"
 msgstr "çağrılar · p95"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "invoice"
-msgstr "fatura"
+#~ msgid "invoice"
+#~ msgstr "fatura"
 
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Invoice"
@@ -10804,6 +10888,10 @@ msgstr "Anahtar gerekli."
 msgid "Key limits saved."
 msgstr "Anahtar limitleri kaydedildi."
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Key must be 1–100 characters: letters, digits, _, - or ., starting with a letter or digit."
+msgstr "Anahtar 1–100 karakter olmalı: harf, rakam, _, - veya .; harf ya da rakamla başlamalı."
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Key must be 120 characters or fewer."
 msgstr "Anahtar en fazla 120 karakter olmalıdır."
@@ -11138,6 +11226,10 @@ msgstr "LDAP URL'si"
 msgid "LDAP username"
 msgstr "LDAP kullanıcı adı"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Least prominent text, such as a footnote."
+msgstr "En az öne çıkan metin, örneğin bir dipnot."
+
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "Leave blank for the whole workspace. A scoped credential cannot see or write outside its prefix, listings included."
 msgstr "Tüm çalışma alanı için boş bırakın. Kapsamlı bir kimlik bilgisi, listeleme dahil, öneki dışını göremez ve yazamaz."
@@ -11299,8 +11391,13 @@ msgstr "toplam"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "Light"
 msgstr "Açık"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "light or dark."
+msgstr "light (açık) ya da dark (koyu)."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Limit"
@@ -12481,6 +12578,10 @@ msgstr "gezin"
 msgid "needs {0}"
 msgstr "{0} gerekir"
 
+#: src/client/admin/pages/settings/template-tabs.tsx
+msgid "Needs attention"
+msgstr "Bakılması gereken bir şey var"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
 #~ msgstr "Sunucuda TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY gerektirir."
@@ -13612,8 +13713,8 @@ msgid "No rooms yet — click + New room."
 msgstr "Henüz oda yok — + Yeni oda'ya tıklayın."
 
 #: src/client/admin/collections/relational-pickers.tsx
-msgid "No row from c_{target} selected"
-msgstr "c_{target} tablosundan satır seçilmedi"
+msgid "No row from {target} selected"
+msgstr "{target} tablosundan satır seçilmedi"
 
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "No row has a value in this column, so nothing is lost."
@@ -13754,6 +13855,7 @@ msgid "No templates available."
 msgstr "Kullanılabilir şablon yok."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "No templates match your search."
 msgstr "Aramanızla eşleşen şablon yok."
@@ -14017,6 +14119,7 @@ msgstr "Abone olunmadı — bağlantı reddedildi ya da koptu."
 msgid "Not used"
 msgstr "Kullanılmıyor"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Not valid JSON — the preview keeps the last valid sample data until this is fixed."
 msgstr "Geçerli JSON değil — bu düzeltilene kadar önizleme son geçerli örnek veriyi kullanır."
@@ -14570,8 +14673,8 @@ msgid "Only the deepest categories can be sold into, so the list offers those. W
 msgstr "Yalnızca en alt kırılıma satış yapılabilir, liste de onları sunar. {providerName} neyi istiyorsa, kategori seçildikten sonra sorulur."
 
 #: src/client/admin/collections/bulk-edit.tsx
-msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
-msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
+msgid "Only the fields you change are written to all {count} selected rows in <0>{slug}</0>; everything else is left untouched."
+msgstr "Yalnızca değiştirdiğiniz alanlar <0>{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Only the hash of the link is stored, so the one handed out when this resource was created cannot be shown again. Mint a replacement to see one — the old link stops working the moment you do."
@@ -15006,6 +15109,7 @@ msgstr "p95 gecikme"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/observability/insights.tsx
+#: src/client/admin/pages/settings/documents.tsx
 msgid "Page"
 msgstr "Sayfa"
 
@@ -15013,9 +15117,25 @@ msgstr "Sayfa"
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "sayfa {page} / {totalPages}"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Page background."
+msgstr "Sayfa arka planı."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Page count"
+msgstr "Sayfa sayısı"
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Page footer (HTML)"
 msgstr "Sayfa altbilgisi (HTML)"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Page header (HTML)"
+msgstr "Sayfa üst bilgisi (HTML)"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Page number"
+msgstr "Sayfa numarası"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Page path"
@@ -15555,8 +15675,8 @@ msgid "Pick a room on the left, or click <0>+ New room</0>."
 msgstr "Soldan bir oda seçin ya da <0>+ Yeni oda</0>'ya tıklayın."
 
 #: src/client/admin/collections/relational-pickers.tsx
-msgid "Pick a row from <0>c_{target}</0>"
-msgstr "<0>c_{target}</0> tablosundan satır seçin"
+msgid "Pick a row from <0>{target}</0>"
+msgstr "<0>{target}</0> tablosundan satır seçin"
 
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Pick a row to select it"
@@ -15596,6 +15716,7 @@ msgstr "Hedef koleksiyon seçin."
 msgid "Pick a template"
 msgstr "Şablon seçin"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Pick a template, or use \"New template\" to add one."
 msgstr "Bir şablon seçin ya da eklemek için \"Yeni şablon\"u kullanın."
@@ -17146,8 +17267,8 @@ msgstr "ilişki"
 #. placeholder {0}: pendingRel.from
 #. placeholder {1}: pendingRel.to
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Relation \"{name}\" added · c_{0} → c_{1}."
-msgstr "\"{name}\" ilişkisi eklendi · c_{0} → c_{1}."
+msgid "Relation \"{name}\" added · {0} → {1}."
+msgstr "\"{name}\" ilişkisi eklendi · {0} → {1}."
 
 #: src/client/admin/collections/items.tsx
 msgid "Relation has no target"
@@ -17366,8 +17487,8 @@ msgid "Rename"
 msgstr "Yeniden adlandır"
 
 #: src/client/admin/app.tsx
-msgid "Rename <0>c_{slug}</0> → <1>c_{nextSlug}</1>?"
-msgstr "<0>c_{slug}</0> → <1>c_{nextSlug}</1> olarak yeniden adlandırılsın mı?"
+msgid "Rename <0>{slug}</0> → <1>{nextSlug}</1>?"
+msgstr "<0>{slug}</0> → <1>{nextSlug}</1> olarak yeniden adlandırılsın mı?"
 
 #: src/client/admin/app.tsx
 msgid "Rename collection"
@@ -17383,8 +17504,8 @@ msgstr "Grubu yeniden adlandır"
 
 #. placeholder {0}: totals ? ` (${totals} updated)` : ""
 #: src/client/admin/app.tsx
-msgid "Renamed to c_{nextSlug}{0}."
-msgstr "c_{nextSlug}{0} olarak yeniden adlandırıldı."
+msgid "Renamed to {nextSlug}{0}."
+msgstr "{nextSlug}{0} olarak yeniden adlandırıldı."
 
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Renaming…"
@@ -17393,6 +17514,10 @@ msgstr "Yeniden adlandırılıyor…"
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Render PDF"
 msgstr "PDF oluştur"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Rendered from a flow step"
+msgstr "Bir flow adımından oluşturulduğunda"
 
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Rendered to PDF from a complete HTML document. Values interpolate with <0>{rowExample}</0> against the row."
@@ -17566,9 +17691,11 @@ msgstr "Doğrulama e-postasını yeniden gönder"
 #: src/client/admin/collections/list-columns.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "Reset"
 msgstr "Sıfırla"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Reset “{confirmLabel}” to default?"
 msgstr "“{confirmLabel}” varsayılana sıfırlansın mı?"
@@ -17616,10 +17743,12 @@ msgstr "{sent} kullanıcı{0} sıfırlama bağlantısı gönderildi."
 msgid "Reset password"
 msgstr "Parolayı sıfırla"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Reset to default"
 msgstr "Varsayılana sıfırla"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Reset to default."
 msgstr "Varsayılana sıfırlandı."
@@ -17701,8 +17830,8 @@ msgid "Restore collection"
 msgstr "Koleksiyonu geri yükle"
 
 #: src/client/admin/app.tsx
-msgid "Restore collection <0>c_{slug}</0>?"
-msgstr "<0>c_{slug}</0> koleksiyonu geri yüklensin mi?"
+msgid "Restore collection <0>{slug}</0>?"
+msgstr "<0>{slug}</0> koleksiyonu geri yüklensin mi?"
 
 #: src/client/admin/pages/data/database.tsx
 msgid "Restore from this backup?"
@@ -18591,8 +18720,8 @@ msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Mevcut canlı şemayı değiştirilemez bir denetim noktası olarak kaydedin."
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "Save the template before rendering."
-msgstr "Oluşturmadan önce şablonu kaydedin."
+#~ msgid "Save the template before rendering."
+#~ msgstr "Oluşturmadan önce şablonu kaydedin."
 
 #: src/client/admin/pages/settings/email-templates.tsx
 #~ msgid "Save the template before sending a test."
@@ -18643,6 +18772,10 @@ msgstr "Kaydedildi."
 #: src/client/components/mcp-key-modal.tsx
 msgid "Saving MCP guards"
 msgstr "MCP korumaları kaydediliyor"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Saving under this key replaces “{replacedName}” for this workspace — every flow that renders it uses yours."
+msgstr "Bu anahtarla kaydetmek bu çalışma alanında “{replacedName}” şablonunun yerini alır — onu oluşturan her flow sizinkini kullanır."
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Saving under this key replaces “{replacedName}” for this workspace — it goes live for real recipients."
@@ -18913,6 +19046,7 @@ msgstr "Arama alanı"
 msgid "Search steps…"
 msgstr "Adımları ara…"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Search templates"
 msgstr "Şablonlarda ara"
@@ -18933,6 +19067,10 @@ msgstr "Aranabilir"
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Searching…"
 msgstr "Aranıyor…"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Secondary text."
+msgstr "İkincil metin."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "secret"
@@ -19610,6 +19748,10 @@ msgstr "bu kaydı paylaş"
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "shared"
 msgstr "paylaşılan"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Shared defaults"
+msgstr "Paylaşılan varsayılanlar"
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "shared global budget"
@@ -20634,8 +20776,8 @@ msgstr "Depolama anahtarlarının listesini saklar. Yeni dosyaları <0>Depolama<
 
 #. placeholder {0}: target || "—"
 #: src/client/admin/collections/item-form.tsx
-msgid "Stores a row id from <0>c_{0}</0>."
-msgstr "<0>c_{0}</0> tablosundan bir satır ID'si saklar."
+msgid "Stores a row id from <0>{0}</0>."
+msgstr "<0>{0}</0> tablosundan bir satır ID'si saklar."
 
 #: src/client/admin/collections/item-form.tsx
 msgid "Stores a workspace end-user id from <0>app_users</0>."
@@ -20693,6 +20835,10 @@ msgstr "güçlü akıl yürütme · 1M bağlam · uygun fiyat"
 #: src/client/admin/fields/field-format-editor.tsx
 msgid "Style"
 msgstr "Stil"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Stylesheet URL for the web fonts. PDFs load it; most mail clients fall back to the stack."
+msgstr "Web fontlarının stil dosyası adresi. PDF'ler yükler; çoğu e-posta istemcisi yedek fontlara düşer."
 
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "sub"
@@ -21186,6 +21332,10 @@ msgstr "Test ediliyor…"
 msgid "Text"
 msgstr "Metin"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Text that reads on the accent, for a button label."
+msgstr "Vurgu renginin üzerinde okunan metin rengi, örneğin düğme etiketi için."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Text to classify"
 msgstr "Sınıflandırılacak metin"
@@ -21239,6 +21389,10 @@ msgstr "<1> {1}</1> modelinin arkasındaki <0>{0}</0> sağlayıcısı bu dağıt
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "The 100 most recently updated rows. Search runs across the whole collection."
 msgstr "En son güncellenen 100 satır. Arama tüm koleksiyonda çalışır."
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "The accent colour — links, buttons, headings."
+msgstr "Vurgu rengi — bağlantılar, düğmeler, başlıklar."
 
 #: src/client/admin/pages/observability/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
@@ -21340,8 +21494,8 @@ msgstr "Kolon her zaman bir çözümleyicinin yanıt verdiği kodlanmış biçim
 
 #. placeholder {0}: activeCollection || "posts"
 #: src/client/admin/app.tsx
-msgid "The column and its values are removed from <0>c_{0}</0>. Any values it holds are saved to a pre-drop backup first."
-msgstr "Sütun ve içindeki değerler <0>c_{0}</0> tablosundan kaldırılır. Sütunda değer varsa, silmeden önce bir yedeğe alınır."
+msgid "The column and its values are removed from <0>{0}</0>. Any values it holds are saved to a pre-drop backup first."
+msgstr "Sütun ve içindeki değerler <0>{0}</0> tablosundan kaldırılır. Sütunda değer varsa, silmeden önce bir yedeğe alınır."
 
 #. placeholder {0}: hook?.matchLabel ?? t`provider's id`
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
@@ -21769,6 +21923,10 @@ msgstr "Snippet birazdan hazır olacak."
 msgid "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
 msgstr "Etiket onayı bekler. En güvenli yorum; karşılığında hiç yanıt vermeyen ziyaretçileri kaybedersiniz."
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+#~ msgid "The template's HTML decides where these go: they reach it as the theme variables below, in the preview and in what is sent."
+#~ msgstr "Bunların nerede kullanılacağına şablonun HTML'i karar verir: önizlemede ve gönderilende aşağıdaki tema değişkenleri olarak ulaşırlar."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "Token tekrar gösterilemez — yeni bir bağlantı üretmek tek yoldur. Eski bağlantı anında çalışmayı durdurur; gömülü kullanımları güncelleyin."
@@ -21819,12 +21977,17 @@ msgid "Their membership, workspace roles and API keys are revoked together — a
 msgstr "Üyeliği, çalışma alanı rolleri ve API anahtarları birlikte iptal edilir — erişim her yüzeyde anında sona erer. Geri dönüşün tek yolu yeni bir davettir."
 
 #: src/client/admin/pages/data/forms/panels.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "theme"
 msgstr "tema"
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Theme"
 msgstr "Tema"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Theme variables"
+msgstr "Tema değişkenleri"
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
@@ -22156,8 +22319,8 @@ msgid "This removes the panel from <0>saved_panels</0> and any dashboards that r
 msgstr "Bu, paneli <0>saved_panels</0> tablosundan ve ona başvuran tüm panolardan kaldırır. Sorgunun kendisi yeniden çalıştırılmaz. Bu işlem geri alınamaz."
 
 #: src/client/admin/collections/item-editor.tsx
-msgid "This removes the row from <0>c_{slug}</0>. Revisions remain available."
-msgstr "Bu, satırı <0>c_{slug}</0> tablosundan kaldırır. Revizyonlar kullanılabilir kalır."
+msgid "This removes the row from <0>{slug}</0>. Revisions remain available."
+msgstr "Bu, satırı <0>{slug}</0> tablosundan kaldırır. Revizyonlar kullanılabilir kalır."
 
 #: src/client/pages/approve-request.tsx
 msgid "This request is decided in order — the next person is asked once you answer."
@@ -22180,14 +22343,14 @@ msgstr "bu oda"
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-#~ msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
-#~ msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
+#~ msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>{1}</1>. The column and all its data are removed. This cannot be undone."
+#~ msgstr "<1>{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
 
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column is removed for good."
-msgstr "Bu, <1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun kalıcı olarak kaldırılır."
+msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>{1}</1>. The column is removed for good."
+msgstr "Bu, <1>{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun kalıcı olarak kaldırılır."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "This runs on the write path — a slow or failing hook affects live writes."
@@ -22227,6 +22390,7 @@ msgstr "Bu, iki adımlı doğrulamayı zayıflatır"
 msgid "This workspace"
 msgstr "Bu çalışma alanı"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "This workspace already has a template with this key."
 msgstr "Bu çalışma alanında bu anahtarla bir şablon zaten var."
@@ -22242,6 +22406,10 @@ msgstr "Bu çalışma alanında yalnızca üç yerleşik rol var ve hiçbiri bur
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "This workspace's version is deleted and the default is sent again. Unsaved edits are lost too."
 msgstr "Bu çalışma alanının sürümü silinir ve yeniden varsayılan gönderilir. Kaydedilmemiş düzenlemeler de kaybolur."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "This workspace's version is deleted and the shared default renders again. Unsaved edits are lost too."
+msgstr "Bu çalışma alanının sürümü silinir ve paylaşılan varsayılan yeniden kullanılır. Kaydedilmemiş düzenlemeler de kaybolur."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Threshold"
@@ -23003,6 +23171,7 @@ msgstr "kaydedilmemiş"
 msgid "Unsaved"
 msgstr "Kaydedilmedi"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Unsaved changes"
 msgstr "Kaydedilmemiş değişiklikler"
@@ -23384,6 +23553,8 @@ msgid "VAPID keypair generated — review and Save to store it."
 msgstr "VAPID anahtar çifti üretildi — gözden geçirip Kaydet'e basın."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Variables"
 msgstr "Değişkenler"
 
@@ -24277,6 +24448,7 @@ msgid "You have been asked to approve this."
 msgstr "Bunu onaylamanız istendi."
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
 msgstr "Kaydedilmemiş değişiklikleriniz var. Ayrılırsanız kaybolur."
@@ -24456,6 +24628,7 @@ msgstr "İmzanız kaydedildi. Herkes imzaladığında size bir kopya gönderilec
 msgid "Your submission has been received."
 msgstr "Gönderiminiz alındı."
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Your templates"
 msgstr "Şablonlarınız"

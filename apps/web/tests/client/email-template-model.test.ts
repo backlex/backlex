@@ -10,7 +10,9 @@ import {
   entryStatus,
   insertText,
   isCompleteDocument,
+  isThemePath,
   keyProblem,
+  sameDraft,
   seedSample,
   senderPasses,
   setPath,
@@ -33,6 +35,7 @@ const row = (over: Partial<ApiEmailTemplate>): ApiEmailTemplate => ({
   bodyHtml: "",
   bodyText: null,
   variables: null,
+  appearance: null,
   inherited: false,
   overridesDefault: false,
   ...over,
@@ -150,5 +153,22 @@ describe("editing and preview", () => {
     expect(isCompleteDocument("<!doctype html><html><body>x</body></html>")).toBe(true);
     expect(isCompleteDocument("  <html lang=\"en\">…")).toBe(true);
     expect(isCompleteDocument("<p>Welcome to {{ site.name }}!</p>")).toBe(false);
+  });
+});
+
+describe("appearance in the draft", () => {
+  test("an appearance change is an unsaved edit, but key order and an explicit null are not", () => {
+    const base = { ...EMPTY_DRAFT, appearance: { theme: "dark" as const, accent: "#8B6CFF" } };
+    expect(sameDraft(base, { ...base, appearance: { accent: "#8b6cff", theme: "dark" } })).toBe(true);
+    expect(sameDraft(base, { ...base, appearance: { theme: "light" } })).toBe(false);
+    expect(sameDraft({ ...EMPTY_DRAFT, appearance: null }, { ...EMPTY_DRAFT, appearance: {} })).toBe(true);
+  });
+
+  test("a theme placeholder is never a missing variable, a typo beside it still is", () => {
+    const entry: TemplateEntry = { id: "n", key: "n", row: null, builtIn: null, isNew: true };
+    const draft = { ...EMPTY_DRAFT, subject: "{{ theme.mode }}", bodyHtml: "{{ theme.accent }} {{ usr.email }}" };
+    expect(variableWarnings(entry, draft, {}).map((w) => w.path)).toEqual(["usr.email"]);
+    expect(isThemePath("theme.accent")).toBe(true);
+    expect(isThemePath("themes.accent")).toBe(false);
   });
 });

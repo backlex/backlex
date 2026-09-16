@@ -1,3 +1,4 @@
+import type { Appearance } from "@backlex/core/appearance";
 import { api } from "@/lib/api";
 import type { Envelope } from "./types";
 
@@ -29,6 +30,8 @@ export interface ApiEmailTemplate {
   /** Plain-text part. Null means it is derived from `bodyHtml` at send time. */
   bodyText: string | null;
   variables: string[] | null;
+  /** Theme, accent and font — rendered as `{{ theme.* }}`. Null when unset. */
+  appearance: Appearance | null;
   /** The instance-wide default for this key. Saving it writes this workspace's
    *  own copy (a new id); it cannot be deleted. */
   inherited: boolean;
@@ -39,7 +42,7 @@ export interface ApiEmailTemplate {
 
 export type EmailTemplateInput = Pick<
   ApiEmailTemplate,
-  "key" | "name" | "subject" | "fromAddress" | "bodyHtml" | "bodyText" | "variables"
+  "key" | "name" | "subject" | "fromAddress" | "bodyHtml" | "bodyText" | "variables" | "appearance"
 >;
 
 export const emailTemplatesApi = {
@@ -75,6 +78,7 @@ export const emailTemplatesApi = {
     bodyHtml: string;
     bodyText?: string | null;
     fromAddress?: string | null;
+    appearance?: Appearance | null;
     vars: Record<string, unknown>;
     to?: string;
   }) =>

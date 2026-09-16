@@ -118,8 +118,8 @@ msgid "…or read the country from <0>(optional)</0>"
 msgstr "…or read the country from <0>(optional)</0>"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "· approximate — use Render PDF for the real thing"
-msgstr "· approximate — use Render PDF for the real thing"
+#~ msgid "· approximate — use Render PDF for the real thing"
+#~ msgstr "· approximate — use Render PDF for the real thing"
 
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "· keep last"
@@ -278,8 +278,8 @@ msgid "(pick a provider first)"
 msgstr "(pick a provider first)"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "(unnamed)"
-msgstr "(unnamed)"
+#~ msgid "(unnamed)"
+#~ msgstr "(unnamed)"
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "(use the configured default)"
@@ -1031,6 +1031,7 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} deleted."
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "{label} (copy)"
 msgstr "{label} (copy)"
@@ -1174,6 +1175,10 @@ msgstr "{slugClean} already exists"
 msgid "{systemCount} system · {customCount} custom"
 msgstr "{systemCount} system · {customCount} custom"
 
+#: src/client/admin/collections/relational-pickers.tsx
+msgid "{target} is empty."
+msgstr "{target} is empty."
+
 #. placeholder {0}: schemaState.fields.length
 #: src/client/admin/app.tsx
 msgid "{total} rows · {0} fields"
@@ -1255,6 +1260,10 @@ msgid "<0>{placeholder}</0> has no sample value, so the preview and the test ema
 msgstr "<0>{placeholder}</0> has no sample value, so the preview and the test email show it empty."
 
 #: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "<0>{placeholder}</0> has no sample value, so the preview and the test render show it empty."
+msgstr "<0>{placeholder}</0> has no sample value, so the preview and the test render show it empty."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
 msgid "<0>{placeholder}</0> is not sent with this email, so it will always be empty."
 msgstr "<0>{placeholder}</0> is not sent with this email, so it will always be empty."
 
@@ -1324,6 +1333,10 @@ msgstr "1 unit, all ruled on"
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
 msgstr "1 year"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "1–100 characters: letters, digits, _, - or ., starting with a letter or digit."
+msgstr "1–100 characters: letters, digits, _, - or ., starting with a letter or digit."
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "1:1 square"
@@ -1470,6 +1483,10 @@ msgstr "A consent banner is served for a registered website. Register one first,
 msgid "a cookie, not an identity — another browser answers again"
 msgstr "a cookie, not an identity — another browser answers again"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "A CSS font-family value."
+msgstr "A CSS font-family value."
+
 #: src/client/admin/pages/settings/email-template-variables.tsx
 msgid "A custom template receives whatever its sender passes. Click a variable to insert it where your cursor is."
 msgstr "A custom template receives whatever its sender passes. Click a variable to insert it where your cursor is."
@@ -1481,6 +1498,10 @@ msgstr "A dashboard with that name already exists."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A date range has to end on or after the day it starts."
 msgstr "A date range has to end on or after the day it starts."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "A document receives whatever renders it — a flow step passes the row as data. Click a variable to insert it where your cursor is."
+msgstr "A document receives whatever renders it — a flow step passes the row as data. Click a variable to insert it where your cursor is."
 
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
@@ -1689,9 +1710,14 @@ msgstr "A tag runs only when something triggers it — usually a page view."
 #~ msgstr "A teammate is running a turn…"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "A template needs a key."
-msgstr "A template needs a key."
+msgid "A template needs a body."
+msgstr "A template needs a body."
 
+#: src/client/admin/pages/settings/documents.tsx
+#~ msgid "A template needs a key."
+#~ msgstr "A template needs a key."
+
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "A template with key \"{key}\" already exists."
 msgstr "A template with key \"{key}\" already exists."
@@ -1766,6 +1792,7 @@ msgid "About"
 msgstr "About"
 
 #: src/client/admin/pages/data/forms/panels.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "accent"
 msgstr "accent"
 
@@ -2041,6 +2068,10 @@ msgstr "Add a \"Wait for approval\" step to a flow, and the requests it raises s
 msgid "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
 msgstr "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Add a body before rendering."
+msgstr "Add a body before rendering."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Add a booking"
 msgstr "Add a booking"
@@ -2092,8 +2123,8 @@ msgid "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collec
 msgstr "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collections with sample data. Existing collections are skipped."
 
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
-msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
+msgid "Add a relation field on <0>{from}</0> pointing to <1>{to}</1>."
+msgstr "Add a relation field on <0>{from}</0> pointing to <1>{to}</1>."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add a remote MCP connector"
@@ -2183,8 +2214,8 @@ msgstr "Add field"
 
 #. placeholder {0}: schema?.slug || "posts"
 #: src/client/admin/fields/add-field.tsx
-msgid "Add field to <0>c_{0}</0>"
-msgstr "Add field to <0>c_{0}</0>"
+msgid "Add field to <0>{0}</0>"
+msgstr "Add field to <0>{0}</0>"
 
 #: src/client/admin/collections/items.tsx
 msgid "Add filter"
@@ -2762,6 +2793,14 @@ msgstr "Also revoked {0} API key{1}."
 msgid "Also show rows that are out of play"
 msgstr "Also show rows that are out of play"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+#~ msgid "Always available, whoever sends or renders the template. Click one to insert it where your cursor is."
+#~ msgstr "Always available, whoever sends or renders the template. Click one to insert it where your cursor is."
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Always available. Click one to insert it where your cursor is."
+msgstr "Always available. Click one to insert it where your cursor is."
+
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Always fires. The site cannot run without it, so nothing is asked."
 msgstr "Always fires. The site cannot run without it, so nothing is asked."
@@ -3064,6 +3103,8 @@ msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on
 msgstr "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
 
 #: src/client/admin/pages/observability/consent.tsx
+#: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
 msgid "Appearance"
 msgstr "Appearance"
@@ -3203,6 +3244,10 @@ msgstr "Approvers"
 msgid "Approving…"
 msgstr "Approving…"
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "approximate — use Render PDF for the real thing"
+msgstr "approximate — use Render PDF for the real thing"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Apps sending with it stop being accepted immediately, and events they emit are lost rather than queued."
 msgstr "Apps sending with it stop being accepted immediately, and events they emit are lost rather than queued."
@@ -3222,12 +3267,12 @@ msgid "Archive collection"
 msgstr "Archive collection"
 
 #: src/client/admin/app.tsx
-msgid "Archive collection <0>c_{activeCollection}</0>?"
-msgstr "Archive collection <0>c_{activeCollection}</0>?"
+msgid "Archive collection <0>{activeCollection}</0>?"
+msgstr "Archive collection <0>{activeCollection}</0>?"
 
 #: src/client/admin/app.tsx
-msgid "Archive collection <0>c_{slug}</0>?"
-msgstr "Archive collection <0>c_{slug}</0>?"
+msgid "Archive collection <0>{slug}</0>?"
+msgstr "Archive collection <0>{slug}</0>?"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Archive this collection"
@@ -3621,6 +3666,10 @@ msgstr "Back up now"
 msgid "Background"
 msgstr "Background"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Background of a panel on the page."
+msgstr "Background of a panel on the page."
+
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
 msgstr "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
@@ -3848,6 +3897,10 @@ msgstr "Body (HTML)"
 msgid "Body (text)"
 msgstr "Body (text)"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Body text."
+msgstr "Body text."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Book"
 msgstr "Book"
@@ -3926,6 +3979,10 @@ msgstr "Bookings are not recorded anywhere but here. The ledger stays the only p
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Border"
 msgstr "Border"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Borders and dividers."
+msgstr "Borders and dividers."
 
 #: src/client/admin/collections/items.tsx
 msgid "Both"
@@ -4071,10 +4128,6 @@ msgstr "bypass — read-only"
 #: src/client/admin/pages/access/roles-panel.tsx
 msgid "bypasses every permission check"
 msgstr "bypasses every permission check"
-
-#: src/client/admin/collections/relational-pickers.tsx
-msgid "c_{target} is empty."
-msgstr "c_{target} is empty."
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "cached"
@@ -4805,25 +4858,25 @@ msgstr "Collection"
 
 #. placeholder {0}: c.slug
 #: src/client/admin/app.tsx
-msgid "Collection c_{0} created."
-msgstr "Collection c_{0} created."
+msgid "Collection {0} created."
+msgstr "Collection {0} created."
 
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} archived. Restore it from the Archived view."
-msgstr "Collection c_{slug} archived. Restore it from the Archived view."
+msgid "Collection {slug} archived. Restore it from the Archived view."
+msgstr "Collection {slug} archived. Restore it from the Archived view."
 
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} dropped."
-msgstr "Collection c_{slug} dropped."
+msgid "Collection {slug} dropped."
+msgstr "Collection {slug} dropped."
 
 #. placeholder {0}: resp.rows
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} dropped. {0} row(s) saved to a backup."
-msgstr "Collection c_{slug} dropped. {0} row(s) saved to a backup."
+msgid "Collection {slug} dropped. {0} row(s) saved to a backup."
+msgstr "Collection {slug} dropped. {0} row(s) saved to a backup."
 
 #: src/client/admin/app.tsx
-msgid "Collection c_{slug} restored."
-msgstr "Collection c_{slug} restored."
+msgid "Collection {slug} restored."
+msgstr "Collection {slug} restored."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Collection default"
@@ -4912,22 +4965,22 @@ msgstr "Column"
 #. placeholder {0}: (field as { name?: string }).name
 #. placeholder {1}: addSchema.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Column \"{0}\" added to c_{1}."
-msgstr "Column \"{0}\" added to c_{1}."
+msgid "Column \"{0}\" added to {1}."
+msgstr "Column \"{0}\" added to {1}."
 
 #. placeholder {0}: (field as any).name
 #: src/client/admin/app.tsx
-msgid "Column \"{0}\" added to c_{slug}."
-msgstr "Column \"{0}\" added to c_{slug}."
+msgid "Column \"{0}\" added to {slug}."
+msgstr "Column \"{0}\" added to {slug}."
 
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Column \"{name}\" dropped from c_{slug}."
-msgstr "Column \"{name}\" dropped from c_{slug}."
+msgid "Column \"{name}\" dropped from {slug}."
+msgstr "Column \"{name}\" dropped from {slug}."
 
 #. placeholder {0}: res.nonNull
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup."
-msgstr "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup."
+msgid "Column \"{name}\" dropped from {slug}. {0} value(s) saved to a backup."
+msgstr "Column \"{name}\" dropped from {slug}. {0} value(s) saved to a backup."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."
@@ -5336,6 +5389,8 @@ msgid "contains"
 msgstr "contains"
 
 #: src/client/admin/collections/collections-index.tsx
+#: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Content"
 msgstr "Content"
 
@@ -6307,9 +6362,14 @@ msgstr "Customize the emails backlex sends, or write your own for flows and sche
 msgid "Customize…"
 msgstr "Customize…"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "customized"
 msgstr "customized"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Customized: this workspace renders your version. Reset to go back to the shared default."
+msgstr "Customized: this workspace renders your version. Reset to go back to the shared default."
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Customized: this workspace sends your version. Reset to go back to the built-in email."
@@ -6342,6 +6402,7 @@ msgstr "Danger zone"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "Dark"
 msgstr "Dark"
 
@@ -6579,6 +6640,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -6624,12 +6686,12 @@ msgid "Delete collection"
 msgstr "Delete collection"
 
 #: src/client/admin/app.tsx
-msgid "Delete collection <0>c_{activeCollection}</0>?"
-msgstr "Delete collection <0>c_{activeCollection}</0>?"
+msgid "Delete collection <0>{activeCollection}</0>?"
+msgstr "Delete collection <0>{activeCollection}</0>?"
 
 #: src/client/admin/app.tsx
-msgid "Delete collection <0>c_{slug}</0>?"
-msgstr "Delete collection <0>c_{slug}</0>?"
+msgid "Delete collection <0>{slug}</0>?"
+msgstr "Delete collection <0>{slug}</0>?"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Delete dashboard"
@@ -6761,6 +6823,7 @@ msgstr "Delete this row too (cascade)"
 msgid "Delete this submission?"
 msgstr "Delete this submission?"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Delete this template?"
 msgstr "Delete this template?"
@@ -7001,6 +7064,7 @@ msgstr "disappears from the workspace list of every member, not only yours, and 
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -7013,6 +7077,7 @@ msgid "Discard changes"
 msgstr "Discard changes"
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Discard unsaved changes?"
 msgstr "Discard unsaved changes?"
@@ -7266,8 +7331,12 @@ msgid "Draw your signature first"
 msgstr "Draw your signature first"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "Drawn on every page by the renderer, not in the preview."
-msgstr "Drawn on every page by the renderer, not in the preview."
+#~ msgid "Drawn on every page by the renderer, not in the preview."
+#~ msgstr "Drawn on every page by the renderer, not in the preview."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Drawn on every page by the renderer, not in the preview. Insert:"
+msgstr "Drawn on every page by the renderer, not in the preview. Insert:"
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Drives the period comparison"
@@ -7355,10 +7424,12 @@ msgstr "Duplicate <0>{source}</0>"
 msgid "Duplicate collection (schema only)"
 msgstr "Duplicate collection (schema only)"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Duplicate template"
 msgstr "Duplicate template"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Duplicated as \"{name}\"."
 msgstr "Duplicated as \"{name}\"."
@@ -8838,8 +8909,12 @@ msgid "Fills the preview and the test email. Kept while this page is open; not s
 msgstr "Fills the preview and the test email. Kept while this page is open; not saved with the template."
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "Fills the preview and the test render. The row arrives as `data`."
-msgstr "Fills the preview and the test render. The row arrives as `data`."
+#~ msgid "Fills the preview and the test render. The row arrives as `data`."
+#~ msgstr "Fills the preview and the test render. The row arrives as `data`."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Fills the preview and the test render. The row arrives as data. Kept while this page is open; not saved with the template."
+msgstr "Fills the preview and the test render. The row arrives as data. Kept while this page is open; not saved with the template."
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
@@ -9042,6 +9117,10 @@ msgstr "Flow resumed."
 msgid "Flow steps and reports that name its key fall back to their own subject and body. This can't be undone."
 msgstr "Flow steps and reports that name its key fall back to their own subject and body. This can't be undone."
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Flow steps and signature requests that name its key stop rendering. This can't be undone."
+msgstr "Flow steps and signature requests that name its key stop rendering. This can't be undone."
+
 #: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/ui.tsx
@@ -9099,6 +9178,7 @@ msgid "Folders"
 msgstr "Folders"
 
 #: src/client/admin/pages/data/forms/panels.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "font"
 msgstr "font"
 
@@ -10165,6 +10245,10 @@ msgstr "Input (JSON)"
 #~ msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
 #~ msgstr "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Insert {{ {path} }}"
+msgstr "Insert {{ {path} }}"
+
 #: src/client/admin/pages/settings/email-template-variables.tsx
 msgid "Insert {placeholder}"
 msgstr "Insert {placeholder}"
@@ -10175,8 +10259,8 @@ msgstr "Insert field"
 
 #. placeholder {0}: ownerScoped ? ( <> . Owner is set to <span className="font-mono">$user.id</span> </> ) : null
 #: src/client/admin/sheet.tsx
-msgid "Insert into <0>c_{slug}</0>{0}."
-msgstr "Insert into <0>c_{slug}</0>{0}."
+msgid "Insert into <0>{slug}</0>{0}."
+msgstr "Insert into <0>{slug}</0>{0}."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
@@ -10409,8 +10493,8 @@ msgid "invocations · p95"
 msgstr "invocations · p95"
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "invoice"
-msgstr "invoice"
+#~ msgid "invoice"
+#~ msgstr "invoice"
 
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Invoice"
@@ -10804,6 +10888,10 @@ msgstr "Key is required."
 msgid "Key limits saved."
 msgstr "Key limits saved."
 
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Key must be 1–100 characters: letters, digits, _, - or ., starting with a letter or digit."
+msgstr "Key must be 1–100 characters: letters, digits, _, - or ., starting with a letter or digit."
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Key must be 120 characters or fewer."
 msgstr "Key must be 120 characters or fewer."
@@ -11138,6 +11226,10 @@ msgstr "LDAP URL"
 msgid "LDAP username"
 msgstr "LDAP username"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Least prominent text, such as a footnote."
+msgstr "Least prominent text, such as a footnote."
+
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "Leave blank for the whole workspace. A scoped credential cannot see or write outside its prefix, listings included."
 msgstr "Leave blank for the whole workspace. A scoped credential cannot see or write outside its prefix, listings included."
@@ -11299,8 +11391,13 @@ msgstr "lifetime"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "Light"
 msgstr "Light"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "light or dark."
+msgstr "light or dark."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Limit"
@@ -12481,6 +12578,10 @@ msgstr "navigate"
 msgid "needs {0}"
 msgstr "needs {0}"
 
+#: src/client/admin/pages/settings/template-tabs.tsx
+msgid "Needs attention"
+msgstr "Needs attention"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
 #~ msgstr "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
@@ -13612,8 +13713,8 @@ msgid "No rooms yet — click + New room."
 msgstr "No rooms yet — click + New room."
 
 #: src/client/admin/collections/relational-pickers.tsx
-msgid "No row from c_{target} selected"
-msgstr "No row from c_{target} selected"
+msgid "No row from {target} selected"
+msgstr "No row from {target} selected"
 
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "No row has a value in this column, so nothing is lost."
@@ -13754,6 +13855,7 @@ msgid "No templates available."
 msgstr "No templates available."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "No templates match your search."
 msgstr "No templates match your search."
@@ -14017,6 +14119,7 @@ msgstr "Not subscribed — the connection was refused or dropped."
 msgid "Not used"
 msgstr "Not used"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Not valid JSON — the preview keeps the last valid sample data until this is fixed."
 msgstr "Not valid JSON — the preview keeps the last valid sample data until this is fixed."
@@ -14570,8 +14673,8 @@ msgid "Only the deepest categories can be sold into, so the list offers those. W
 msgstr "Only the deepest categories can be sold into, so the list offers those. What {providerName} demands is asked once the category is chosen."
 
 #: src/client/admin/collections/bulk-edit.tsx
-msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
-msgstr "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
+msgid "Only the fields you change are written to all {count} selected rows in <0>{slug}</0>; everything else is left untouched."
+msgstr "Only the fields you change are written to all {count} selected rows in <0>{slug}</0>; everything else is left untouched."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Only the hash of the link is stored, so the one handed out when this resource was created cannot be shown again. Mint a replacement to see one — the old link stops working the moment you do."
@@ -15006,6 +15109,7 @@ msgstr "p95 latency"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/observability/insights.tsx
+#: src/client/admin/pages/settings/documents.tsx
 msgid "Page"
 msgstr "Page"
 
@@ -15013,9 +15117,25 @@ msgstr "Page"
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "page {page} / {totalPages}"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Page background."
+msgstr "Page background."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Page count"
+msgstr "Page count"
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Page footer (HTML)"
 msgstr "Page footer (HTML)"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Page header (HTML)"
+msgstr "Page header (HTML)"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Page number"
+msgstr "Page number"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Page path"
@@ -15555,8 +15675,8 @@ msgid "Pick a room on the left, or click <0>+ New room</0>."
 msgstr "Pick a room on the left, or click <0>+ New room</0>."
 
 #: src/client/admin/collections/relational-pickers.tsx
-msgid "Pick a row from <0>c_{target}</0>"
-msgstr "Pick a row from <0>c_{target}</0>"
+msgid "Pick a row from <0>{target}</0>"
+msgstr "Pick a row from <0>{target}</0>"
 
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Pick a row to select it"
@@ -15596,6 +15716,7 @@ msgstr "Pick a target collection."
 msgid "Pick a template"
 msgstr "Pick a template"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Pick a template, or use \"New template\" to add one."
 msgstr "Pick a template, or use \"New template\" to add one."
@@ -17146,8 +17267,8 @@ msgstr "relation"
 #. placeholder {0}: pendingRel.from
 #. placeholder {1}: pendingRel.to
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Relation \"{name}\" added · c_{0} → c_{1}."
-msgstr "Relation \"{name}\" added · c_{0} → c_{1}."
+msgid "Relation \"{name}\" added · {0} → {1}."
+msgstr "Relation \"{name}\" added · {0} → {1}."
 
 #: src/client/admin/collections/items.tsx
 msgid "Relation has no target"
@@ -17366,8 +17487,8 @@ msgid "Rename"
 msgstr "Rename"
 
 #: src/client/admin/app.tsx
-msgid "Rename <0>c_{slug}</0> → <1>c_{nextSlug}</1>?"
-msgstr "Rename <0>c_{slug}</0> → <1>c_{nextSlug}</1>?"
+msgid "Rename <0>{slug}</0> → <1>{nextSlug}</1>?"
+msgstr "Rename <0>{slug}</0> → <1>{nextSlug}</1>?"
 
 #: src/client/admin/app.tsx
 msgid "Rename collection"
@@ -17383,8 +17504,8 @@ msgstr "Rename group"
 
 #. placeholder {0}: totals ? ` (${totals} updated)` : ""
 #: src/client/admin/app.tsx
-msgid "Renamed to c_{nextSlug}{0}."
-msgstr "Renamed to c_{nextSlug}{0}."
+msgid "Renamed to {nextSlug}{0}."
+msgstr "Renamed to {nextSlug}{0}."
 
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Renaming…"
@@ -17393,6 +17514,10 @@ msgstr "Renaming…"
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Render PDF"
 msgstr "Render PDF"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Rendered from a flow step"
+msgstr "Rendered from a flow step"
 
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Rendered to PDF from a complete HTML document. Values interpolate with <0>{rowExample}</0> against the row."
@@ -17566,9 +17691,11 @@ msgstr "Resend verification email"
 #: src/client/admin/collections/list-columns.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "Reset"
 msgstr "Reset"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Reset “{confirmLabel}” to default?"
 msgstr "Reset “{confirmLabel}” to default?"
@@ -17616,10 +17743,12 @@ msgstr "Reset link sent to {sent} user{0}."
 msgid "Reset password"
 msgstr "Reset password"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Reset to default"
 msgstr "Reset to default"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Reset to default."
 msgstr "Reset to default."
@@ -17701,8 +17830,8 @@ msgid "Restore collection"
 msgstr "Restore collection"
 
 #: src/client/admin/app.tsx
-msgid "Restore collection <0>c_{slug}</0>?"
-msgstr "Restore collection <0>c_{slug}</0>?"
+msgid "Restore collection <0>{slug}</0>?"
+msgstr "Restore collection <0>{slug}</0>?"
 
 #: src/client/admin/pages/data/database.tsx
 msgid "Restore from this backup?"
@@ -18591,8 +18720,8 @@ msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Save the current live schema as an immutable checkpoint."
 
 #: src/client/admin/pages/settings/documents.tsx
-msgid "Save the template before rendering."
-msgstr "Save the template before rendering."
+#~ msgid "Save the template before rendering."
+#~ msgstr "Save the template before rendering."
 
 #: src/client/admin/pages/settings/email-templates.tsx
 #~ msgid "Save the template before sending a test."
@@ -18643,6 +18772,10 @@ msgstr "Saved."
 #: src/client/components/mcp-key-modal.tsx
 msgid "Saving MCP guards"
 msgstr "Saving MCP guards"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Saving under this key replaces “{replacedName}” for this workspace — every flow that renders it uses yours."
+msgstr "Saving under this key replaces “{replacedName}” for this workspace — every flow that renders it uses yours."
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Saving under this key replaces “{replacedName}” for this workspace — it goes live for real recipients."
@@ -18913,6 +19046,7 @@ msgstr "Search playground"
 msgid "Search steps…"
 msgstr "Search steps…"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Search templates"
 msgstr "Search templates"
@@ -18933,6 +19067,10 @@ msgstr "Searchable"
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Searching…"
 msgstr "Searching…"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Secondary text."
+msgstr "Secondary text."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "secret"
@@ -19610,6 +19748,10 @@ msgstr "share this record"
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "shared"
 msgstr "shared"
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "Shared defaults"
+msgstr "Shared defaults"
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "shared global budget"
@@ -20634,8 +20776,8 @@ msgstr "Stores a list of storage keys. Upload new files on the <0>Storage</0> pa
 
 #. placeholder {0}: target || "—"
 #: src/client/admin/collections/item-form.tsx
-msgid "Stores a row id from <0>c_{0}</0>."
-msgstr "Stores a row id from <0>c_{0}</0>."
+msgid "Stores a row id from <0>{0}</0>."
+msgstr "Stores a row id from <0>{0}</0>."
 
 #: src/client/admin/collections/item-form.tsx
 msgid "Stores a workspace end-user id from <0>app_users</0>."
@@ -20693,6 +20835,10 @@ msgstr "strong reasoning · 1M context · low cost"
 #: src/client/admin/fields/field-format-editor.tsx
 msgid "Style"
 msgstr "Style"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Stylesheet URL for the web fonts. PDFs load it; most mail clients fall back to the stack."
+msgstr "Stylesheet URL for the web fonts. PDFs load it; most mail clients fall back to the stack."
 
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "sub"
@@ -21186,6 +21332,10 @@ msgstr "Testing…"
 msgid "Text"
 msgstr "Text"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Text that reads on the accent, for a button label."
+msgstr "Text that reads on the accent, for a button label."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Text to classify"
 msgstr "Text to classify"
@@ -21239,6 +21389,10 @@ msgstr "The <0>{0}</0> provider behind<1> {1}</1> isn't configured on this deplo
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "The 100 most recently updated rows. Search runs across the whole collection."
 msgstr "The 100 most recently updated rows. Search runs across the whole collection."
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "The accent colour — links, buttons, headings."
+msgstr "The accent colour — links, buttons, headings."
 
 #: src/client/admin/pages/observability/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
@@ -21340,8 +21494,8 @@ msgstr "The column always stores the encoded form a resolver answers for. This o
 
 #. placeholder {0}: activeCollection || "posts"
 #: src/client/admin/app.tsx
-msgid "The column and its values are removed from <0>c_{0}</0>. Any values it holds are saved to a pre-drop backup first."
-msgstr "The column and its values are removed from <0>c_{0}</0>. Any values it holds are saved to a pre-drop backup first."
+msgid "The column and its values are removed from <0>{0}</0>. Any values it holds are saved to a pre-drop backup first."
+msgstr "The column and its values are removed from <0>{0}</0>. Any values it holds are saved to a pre-drop backup first."
 
 #. placeholder {0}: hook?.matchLabel ?? t`provider's id`
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
@@ -21769,6 +21923,10 @@ msgstr "The snippet is ready in a moment."
 msgid "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
 msgstr "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+#~ msgid "The template's HTML decides where these go: they reach it as the theme variables below, in the preview and in what is sent."
+#~ msgstr "The template's HTML decides where these go: they reach it as the theme variables below, in the preview and in what is sent."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
@@ -21819,12 +21977,17 @@ msgid "Their membership, workspace roles and API keys are revoked together — a
 msgstr "Their membership, workspace roles and API keys are revoked together — access ends immediately, on every surface. A new invitation is the only way back."
 
 #: src/client/admin/pages/data/forms/panels.tsx
+#: src/client/admin/pages/settings/template-appearance.tsx
 msgid "theme"
 msgstr "theme"
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Theme"
 msgstr "Theme"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Theme variables"
+msgstr "Theme variables"
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
@@ -22156,8 +22319,8 @@ msgid "This removes the panel from <0>saved_panels</0> and any dashboards that r
 msgstr "This removes the panel from <0>saved_panels</0> and any dashboards that reference it. The query itself isn't run again. This action can't be undone."
 
 #: src/client/admin/collections/item-editor.tsx
-msgid "This removes the row from <0>c_{slug}</0>. Revisions remain available."
-msgstr "This removes the row from <0>c_{slug}</0>. Revisions remain available."
+msgid "This removes the row from <0>{slug}</0>. Revisions remain available."
+msgstr "This removes the row from <0>{slug}</0>. Revisions remain available."
 
 #: src/client/pages/approve-request.tsx
 msgid "This request is decided in order — the next person is asked once you answer."
@@ -22180,14 +22343,14 @@ msgstr "this room"
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-#~ msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
-#~ msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+#~ msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>{1}</1>. The column and all its data are removed. This cannot be undone."
+#~ msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>{1}</1>. The column and all its data are removed. This cannot be undone."
 
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column is removed for good."
-msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column is removed for good."
+msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>{1}</1>. The column is removed for good."
+msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>{1}</1>. The column is removed for good."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "This runs on the write path — a slow or failing hook affects live writes."
@@ -22227,6 +22390,7 @@ msgstr "This weakens two-factor authentication"
 msgid "This workspace"
 msgstr "This workspace"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "This workspace already has a template with this key."
 msgstr "This workspace already has a template with this key."
@@ -22242,6 +22406,10 @@ msgstr "This workspace has only the three built-in roles, and none of them is gr
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "This workspace's version is deleted and the default is sent again. Unsaved edits are lost too."
 msgstr "This workspace's version is deleted and the default is sent again. Unsaved edits are lost too."
+
+#: src/client/admin/pages/settings/documents.tsx
+msgid "This workspace's version is deleted and the shared default renders again. Unsaved edits are lost too."
+msgstr "This workspace's version is deleted and the shared default renders again. Unsaved edits are lost too."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Threshold"
@@ -23003,6 +23171,7 @@ msgstr "unsaved"
 msgid "Unsaved"
 msgstr "Unsaved"
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Unsaved changes"
 msgstr "Unsaved changes"
@@ -23384,6 +23553,8 @@ msgid "VAPID keypair generated — review and Save to store it."
 msgstr "VAPID keypair generated — review and Save to store it."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Variables"
 msgstr "Variables"
 
@@ -24277,6 +24448,7 @@ msgid "You have been asked to approve this."
 msgstr "You have been asked to approve this."
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
 msgstr "You have edits that haven't been saved. Leaving will lose them."
@@ -24456,6 +24628,7 @@ msgstr "Your signature is recorded. You will get a copy once everyone has signed
 msgid "Your submission has been received."
 msgstr "Your submission has been received."
 
+#: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Your templates"
 msgstr "Your templates"

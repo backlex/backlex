@@ -19,7 +19,7 @@ import { INVITE_TOKEN_HEADER } from "@backlex/auth/client";
 import { auth, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
 import { useWorkspaceBranding } from "@/lib/branding";
-import { version as appVersion } from "../../../package.json";
+import { APP_VERSION_LABEL as appVersion } from "@/lib/app-version";
 
 interface InviteMeta {
   email: string;

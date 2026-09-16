@@ -15,7 +15,7 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { notifyError } from "@/lib/error";
 import { useWorkspaceBranding } from "@/lib/branding";
-import { version as appVersion } from "../../../package.json";
+import { APP_VERSION_LABEL as appVersion } from "@/lib/app-version";
 
 /**
  * OAuth consent screen for the MCP authorization flow (better-auth `mcp`

@@ -11,7 +11,7 @@ import { SocialButtons, useHasSocialProviders } from "@/components/social-button
 import { notifyError } from "@/lib/error";
 import { auth, invalidateAuthSurface, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
-import { version as appVersion } from "../../../package.json";
+import { APP_VERSION_LABEL as appVersion } from "@/lib/app-version";
 
 /** Sign-up consent link — renders a real anchor when the instance owner has
  *  configured a Terms/Privacy URL in Settings, otherwise plain emphasis (so the

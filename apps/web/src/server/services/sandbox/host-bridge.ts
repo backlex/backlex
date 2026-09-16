@@ -97,13 +97,23 @@ const renderRow = (
  * Is a sandboxed function allowed to fetch this URL?
  *
  * The SCHEME is checked first, and before the `*` short-circuit, because the
- * allow-list is about hosts and a scheme is not a host. `new URL(
- * "file://api.example.com/etc/passwd").host` is `api.example.com`, so an
- * operator who set the documented `FUNCTIONS_FETCH_ALLOW=api.example.com` was
- * one four-letter scheme away from handing a workspace admin `.env`,
- * `/proc/self/environ` and `./.data/backlex.sqlite` — the whole multi-tenant
- * database — as `{status, ok, text}` in their own function's return value. Bun
- * ignores the host on a `file:` URL and reads the path.
+ * allow-list is about hosts and a scheme is not a host. A `file:` URL may carry
+ * a host: `new URL("file://api.example.com/" + anyAbsolutePath).host` is
+ * `api.example.com`, so an operator who set the documented
+ * `FUNCTIONS_FETCH_ALLOW=api.example.com` was one four-letter scheme away from
+ * handing a workspace admin `.env`, the classic unix account file, the process
+ * environment under `/proc`, and `./.data/backlex.sqlite` — the whole
+ * multi-tenant database — as `{status, ok, text}` in their own function's
+ * return value. Bun ignores the host on a `file:` URL and reads the path.
+ *
+ * That account file is named in prose on purpose. This module is shipped as a
+ * TEXT asset with its comments intact (`worker/assets/host-bridge-*.js`), and
+ * `scripts/build-worker-template.ts` refuses a bundle carrying a literal a WAF
+ * scores as an attack payload — the cloud publish step 403s on the object
+ * itself. Spelling the path out here cost a template release: the build died at
+ * "scan for WAF-tripping literals" on `worker-v0.4.127`, five days and 230
+ * commits after the comment landed, because nothing between a merge and a
+ * release runs that scan.
  *
  * The guarded path already refused this (`assertPublicHttpUrl` rejects
  * non-http(s)), which is exactly why it had to move here: it must not depend on

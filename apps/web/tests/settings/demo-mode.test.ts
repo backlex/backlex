@@ -147,6 +147,46 @@ describe("demo mode — write guard", () => {
     });
     expect(edited.status).toBe(200);
   });
+
+  // The playground's seeded rows are the demo. "Remove sample data" would hand
+  // every later visitor an empty workspace until the next reset — refused on
+  // the route and on GraphQL (which never passes the prefix list), and the
+  // rows are still there afterwards.
+  test("template sample data cannot be removed on a playground, by the route or GraphQL", async () => {
+    h = makeHarness({ DEMO_MODE: "1" });
+    await seedAdmin(h, undefined, undefined, { openSignup: false });
+    const applied = await h.fetch("/api/admin/templates/apply", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ templateId: "blog" }),
+    });
+    expect(applied.status).toBe(201);
+    const seeded = async () =>
+      ((await (await h.fetch("/api/admin/templates")).json()) as { sampleSeeds: number }).sampleSeeds;
+    const before = await seeded();
+    expect(before).toBeGreaterThan(0);
+
+    expect(isDemoBlockedRequest("POST", "/api/admin/templates/clear-samples")).toBe(true);
+    expect(isDemoBlockedRequest("POST", "/api/admin/templates/apply")).toBe(false);
+    const rest = await h.fetch("/api/admin/templates/clear-samples", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({}),
+    });
+    expect(rest.status).toBe(403);
+
+    const gql = (await (
+      await h.fetch("/api/graphql", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ query: "mutation{ clearTemplateSamples { removed } }" }),
+      })
+    ).json()) as { errors?: { message: string; extensions?: { code?: string } }[] };
+    expect(gql.errors?.[0]?.message).toMatch(/playground/);
+    expect(gql.errors?.[0]?.extensions?.code).toBe("FORBIDDEN");
+
+    expect(await seeded()).toBe(before);
+  });
 });
 
 describe("demo mode — reset", () => {
